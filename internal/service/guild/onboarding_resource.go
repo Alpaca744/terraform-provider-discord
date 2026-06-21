@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"strings"
 
 	"github.com/alpaca744/terraform-provider-discord/internal/conns"
 	"github.com/alpaca744/terraform-provider-discord/internal/diagutil"
@@ -81,7 +83,7 @@ func (r *onboardingResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			"prompts": schema.StringAttribute{
 				Optional:            true,
 				CustomType:          jsontypes.NormalizedType{},
-				MarkdownDescription: "Onboarding prompts as a JSON array. Carried as JSON to support the deeply nested prompt/option structure. Compared semantically.",
+				MarkdownDescription: "Onboarding prompts as a JSON array. Carried as JSON to support the deeply nested prompt/option structure. Compared semantically: Discord assigns its own prompt/option `id` values and adds default fields, so those are ignored when detecting drift and your configured prompts remain authoritative. Use `null` (or omit) for no prompts.",
 			},
 		},
 	}
@@ -185,10 +187,89 @@ func (r *onboardingResource) apply(ctx context.Context, m *onboardingModel, ob *
 		m.DefaultChannelIDs = set
 	}
 
-	if len(ob.Prompts) == 0 || string(ob.Prompts) == "null" || string(ob.Prompts) == "[]" {
-		m.Prompts = jsontypes.NewNormalizedNull()
-	} else {
-		m.Prompts = jsontypes.NewNormalizedValue(string(ob.Prompts))
+	// Discord reassigns every prompt/option id, reorders object keys, and enriches
+	// options with default fields (empty role_ids, emoji defaults, and so on), so
+	// the response never byte- or jsontypes-equals the configured prompts. Keep
+	// the configured value (plan on write, prior state on read) while the response
+	// still agrees with everything the user specified; only adopt the API value on
+	// a genuine difference. This keeps an empty "[]" from collapsing to null and
+	// stops server-assigned ids from causing perpetual drift.
+	if !promptsAgree(m.Prompts, ob.Prompts) {
+		m.Prompts = flattenPrompts(ob.Prompts)
 	}
 	return diags
+}
+
+// flattenPrompts maps the API prompts into the normalized attribute, using null
+// for an empty list so an unset configuration does not show drift.
+func flattenPrompts(raw json.RawMessage) jsontypes.Normalized {
+	if promptsEmpty(raw) {
+		return jsontypes.NewNormalizedNull()
+	}
+	return jsontypes.NewNormalizedValue(string(raw))
+}
+
+// promptsEmpty reports whether a prompts JSON value carries no prompts.
+func promptsEmpty(raw json.RawMessage) bool {
+	s := strings.TrimSpace(string(raw))
+	return s == "" || s == "null" || s == "[]"
+}
+
+// promptsAgree reports whether the prompts Discord returned still match what the
+// user configured. Empty on both sides agrees; empty on only one side does not.
+// Otherwise the configured value is authoritative as long as the response is a
+// superset of it, ignoring server-assigned ids (see jsonSubset).
+func promptsAgree(configured jsontypes.Normalized, apiPrompts json.RawMessage) bool {
+	cfgEmpty := configured.IsNull() || configured.IsUnknown() ||
+		promptsEmpty(json.RawMessage(configured.ValueString()))
+	apiEmpty := promptsEmpty(apiPrompts)
+	if cfgEmpty || apiEmpty {
+		return cfgEmpty == apiEmpty
+	}
+
+	var want, got any
+	if err := json.Unmarshal([]byte(configured.ValueString()), &want); err != nil {
+		return false
+	}
+	if err := json.Unmarshal(apiPrompts, &got); err != nil {
+		return false
+	}
+	return jsonSubset(want, got)
+}
+
+// jsonSubset reports whether got contains everything want specifies. Object keys
+// named "id" in want are ignored because Discord assigns its own prompt/option
+// ids; extra keys in got are ignored. Arrays must match length and agree
+// element-wise, and scalars must be equal.
+func jsonSubset(want, got any) bool {
+	switch w := want.(type) {
+	case map[string]any:
+		g, ok := got.(map[string]any)
+		if !ok {
+			return false
+		}
+		for k, wv := range w {
+			if k == "id" {
+				continue
+			}
+			gv, ok := g[k]
+			if !ok || !jsonSubset(wv, gv) {
+				return false
+			}
+		}
+		return true
+	case []any:
+		g, ok := got.([]any)
+		if !ok || len(g) != len(w) {
+			return false
+		}
+		for i := range w {
+			if !jsonSubset(w[i], g[i]) {
+				return false
+			}
+		}
+		return true
+	default:
+		return reflect.DeepEqual(want, got)
+	}
 }

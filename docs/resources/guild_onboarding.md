@@ -53,7 +53,7 @@ resource "discord_guild_onboarding" "main" {
 - `default_channel_ids` (Set of String) Channel IDs members are opted into by default.
 - `enabled` (Boolean) Whether onboarding is enabled.
 - `mode` (Number) Onboarding mode: 0 ONBOARDING_DEFAULT, 1 ONBOARDING_ADVANCED.
-- `prompts` (String) Onboarding prompts as a JSON array. Carried as JSON to support the deeply nested prompt/option structure. Compared semantically.
+- `prompts` (String) Onboarding prompts as a JSON array. Carried as JSON to support the deeply nested prompt/option structure. Compared semantically: Discord assigns its own prompt/option `id` values and adds default fields, so those are ignored when detecting drift and your configured prompts remain authoritative. Use `null` (or omit) for no prompts.
 
 ## Import
 
