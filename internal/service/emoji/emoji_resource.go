@@ -206,7 +206,15 @@ func (r *emojiResource) apply(ctx context.Context, m *emojiModel, em *Emoji) dia
 	// image is write-only; left as configured in state.
 
 	if len(em.Roles) == 0 {
-		m.Roles = types.SetNull(types.StringType)
+		// Discord cannot distinguish a null roles set from an empty one: both mean
+		// "every member may use the emoji". Preserve the value already in the model
+		// (the plan on create/update, prior state on read) so a configured empty set
+		// does not flip to null and trigger an "inconsistent result after apply"
+		// error. Only fall back to null when the model has no concrete value yet
+		// (e.g. an unknown value, or a fresh import that has not set roles).
+		if m.Roles.IsUnknown() {
+			m.Roles = types.SetNull(types.StringType)
+		}
 		return diags
 	}
 	set, d := types.SetValueFrom(ctx, types.StringType, em.Roles)

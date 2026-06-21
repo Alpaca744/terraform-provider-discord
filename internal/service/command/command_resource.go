@@ -197,7 +197,14 @@ func (r *globalCommandResource) apply(ctx context.Context, m *globalCommandModel
 	} else {
 		m.DMPermission = types.BoolValue(true)
 	}
-	m.Options = flattenOptions(cmd.Options)
+	// Preserve the configured options (plan on create/update, prior state on
+	// read) when they are semantically equal to what Discord returned. The API
+	// echoes options with extra null keys and reordered members, which would
+	// otherwise differ from the planned value and trigger an "inconsistent result
+	// after apply" error. Only adopt the API value on a genuine difference.
+	if !optionsSemanticEqual(m.Options, flattenOptions(cmd.Options)) {
+		m.Options = flattenOptions(cmd.Options)
+	}
 
 	perms, diags := flattenDefaultPerms(ctx, cmd.DefaultMemberPermissions)
 	m.DefaultMemberPermissions = perms
