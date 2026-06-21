@@ -43,7 +43,7 @@ func (c *Client) DoMultipart(ctx context.Context, operation, method, path string
 			return &APIError{Operation: operation, Method: method, Route: path, Message: err.Error()}
 		}
 		respBody, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			if opts.Out != nil && len(respBody) > 0 {

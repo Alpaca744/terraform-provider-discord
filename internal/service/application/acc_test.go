@@ -64,9 +64,9 @@ func TestAccRoleConnectionMetadata(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:                      "discord_application_role_connection_metadata.test",
-				ImportState:                       true,
-				ImportStateVerify:                 true,
+				ResourceName:                         "discord_application_role_connection_metadata.test",
+				ImportState:                          true,
+				ImportStateVerify:                    true,
 				ImportStateVerifyIdentifierAttribute: "application_id",
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
 					rs := s.RootModule().Resources["discord_application_role_connection_metadata.test"]

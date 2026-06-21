@@ -14,11 +14,11 @@ import (
 
 // Environment variables that drive acceptance tests.
 const (
-	EnvBotToken          = "DISCORD_BOT_TOKEN"
-	EnvBearerToken       = "DISCORD_BEARER_TOKEN"
-	EnvTestGuildID       = "DISCORD_TEST_GUILD_ID"
+	EnvBotToken             = "DISCORD_BOT_TOKEN"
+	EnvBearerToken          = "DISCORD_BEARER_TOKEN"
+	EnvTestGuildID          = "DISCORD_TEST_GUILD_ID"
 	EnvTestCommunityGuildID = "DISCORD_TEST_COMMUNITY_GUILD_ID"
-	EnvTestAppID         = "DISCORD_TEST_APPLICATION_ID"
+	EnvTestAppID            = "DISCORD_TEST_APPLICATION_ID"
 )
 
 // ProtoV6ProviderFactories builds the provider under test for resource.Test.

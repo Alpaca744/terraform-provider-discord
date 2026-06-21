@@ -16,3 +16,4 @@ dist/
 
 # Editor
 .DS_Store
+.claude/

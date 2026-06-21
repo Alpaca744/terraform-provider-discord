@@ -144,9 +144,9 @@ resource "discord_guild_template" "test" {
 				Check: resource.TestCheckResourceAttr("discord_guild_template.test", "name", "tf-acc-template-renamed"),
 			},
 			{
-				ResourceName:                      "discord_guild_template.test",
-				ImportState:                       true,
-				ImportStateVerify:                 true,
+				ResourceName:                         "discord_guild_template.test",
+				ImportState:                          true,
+				ImportStateVerify:                    true,
 				ImportStateVerifyIdentifierAttribute: "code",
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
 					rs := s.RootModule().Resources["discord_guild_template.test"]

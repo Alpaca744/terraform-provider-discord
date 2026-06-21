@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -34,12 +33,6 @@ const maxRetries = 4
 type Client struct {
 	cfg        Config
 	httpClient *http.Client
-
-	// buckets serializes requests sharing a rate-limit bucket. Discord assigns
-	// buckets dynamically via X-RateLimit-Bucket, so the map grows as routes are
-	// observed. The mutex guards the map itself.
-	mu      sync.Mutex
-	buckets map[string]*sync.Mutex
 }
 
 // NewClient builds a Client from validated config.
@@ -57,7 +50,6 @@ func NewClient(cfg Config) (*Client, error) {
 	return &Client{
 		cfg:        cfg,
 		httpClient: &http.Client{Timeout: 30 * time.Second},
-		buckets:    make(map[string]*sync.Mutex),
 	}, nil
 }
 
@@ -111,7 +103,7 @@ func (c *Client) Do(ctx context.Context, operation, method, path string, opts Re
 		}
 
 		respBody, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			if opts.Out != nil && len(respBody) > 0 {
