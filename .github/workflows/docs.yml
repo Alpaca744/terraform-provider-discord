@@ -1,0 +1,28 @@
+name: docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: generate docs
+        run: make docs
+      - name: check docs are up to date
+        run: |
+          if [ -n "$(git status --porcelain docs/)" ]; then
+            echo "Generated documentation is out of date. Run 'make docs' and commit the result."
+            git --no-pager diff docs/
+            exit 1
+          fi

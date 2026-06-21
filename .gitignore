@@ -1,0 +1,18 @@
+# compiled provider binary
+terraform-provider-discord
+terraform-provider-discord_*
+
+# Terraform dev overrides
+*.tfrc
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# Go toolchain artifacts
+*.test
+*.out
+dist/
+
+# Editor
+.DS_Store

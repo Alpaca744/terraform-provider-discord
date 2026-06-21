@@ -1,0 +1,31 @@
+name: acceptance
+
+# Acceptance tests hit the live Discord API and require credentials, so they run
+# only on a schedule or manual dispatch in a protected context — never on PRs
+# from forks.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  testacc:
+    runs-on: ubuntu-latest
+    environment: acceptance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: acceptance tests
+        env:
+          TF_ACC: "1"
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_BEARER_TOKEN: ${{ secrets.DISCORD_BEARER_TOKEN }}
+          DISCORD_TEST_GUILD_ID: ${{ secrets.DISCORD_TEST_GUILD_ID }}
+          DISCORD_TEST_APPLICATION_ID: ${{ secrets.DISCORD_TEST_APPLICATION_ID }}
+        run: go test ./... -v -timeout 120m

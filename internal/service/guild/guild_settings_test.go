@@ -1,0 +1,54 @@
+package guild
+
+import (
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/alpaca744/terraform-provider-discord/internal/conns"
+)
+
+func TestModifyGuildContract(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch || r.URL.Path != "/guilds/1" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		body, _ := io.ReadAll(r.Body)
+		var got map[string]any
+		_ = json.Unmarshal(body, &got)
+		// Only set fields should be present; afk_channel_id was nil so omitted.
+		if got["name"] != "Renamed" {
+			t.Errorf("name = %v", got["name"])
+		}
+		if _, present := got["afk_channel_id"]; present {
+			t.Error("unset afk_channel_id should be omitted")
+		}
+		_, _ = w.Write([]byte(`{"id":"1","name":"Renamed","verification_level":2,"premium_progress_bar_enabled":true}`))
+	}))
+	defer srv.Close()
+
+	c, _ := conns.NewClient(conns.Config{BotToken: "t", APIBaseURL: srv.URL})
+	name := "Renamed"
+	g, err := ModifyGuild(context.Background(), c, "1", GuildSettingsBody{Name: &name}, "")
+	if err != nil {
+		t.Fatalf("ModifyGuild: %v", err)
+	}
+	if g.Name != "Renamed" || g.VerificationLevel != 2 || !g.PremiumProgressBarEnabled {
+		t.Errorf("guild = %+v", g)
+	}
+}
+
+func TestGuildSettingsApplyNullsEmpty(t *testing.T) {
+	r := &guildSettingsResource{}
+	var m guildSettingsModel
+	r.apply(&m, &Guild{ID: "1", Name: "G", Description: "", RulesChannelID: ""})
+	if !m.Description.IsNull() || !m.RulesChannelID.IsNull() {
+		t.Error("empty optional fields should map to null")
+	}
+	if m.Name.ValueString() != "G" {
+		t.Errorf("name = %q", m.Name.ValueString())
+	}
+}
