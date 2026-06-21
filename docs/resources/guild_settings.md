@@ -36,6 +36,7 @@ resource "discord_guild_settings" "main" {
 
 - `afk_channel_id` (String) Snowflake ID of the AFK voice channel.
 - `afk_timeout` (Number) AFK timeout in seconds (60, 300, 900, 1800, 3600).
+- `community` (Boolean) Whether the guild's Community feature is enabled. Toggling this includes or excludes `COMMUNITY` in the guild's `features` while preserving all other features. Enabling Community also requires `rules_channel_id` and `public_updates_channel_id` to be set, `verification_level` of at least 1 (LOW), and `explicit_content_filter` of 2 (ALL_MEMBERS); set those in the same resource.
 - `default_message_notifications` (Number) Default message notification level (0 all messages, 1 only mentions).
 - `description` (String) Guild description (community guilds).
 - `explicit_content_filter` (Number) Explicit content filter level (0-2).

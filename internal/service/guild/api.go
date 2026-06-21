@@ -82,42 +82,44 @@ func DeleteRole(ctx context.Context, c *conns.Client, guildID, roleID, reason st
 // Guild mirrors the subset of the Discord guild object exposed by the data source.
 // See https://discord.com/developers/docs/resources/guild#guild-object.
 type Guild struct {
-	ID                          string `json:"id"`
-	Name                        string `json:"name"`
-	Description                 string `json:"description"`
-	OwnerID                     string `json:"owner_id"`
-	Icon                        string `json:"icon"`
-	Splash                      string `json:"splash"`
-	Banner                      string `json:"banner"`
-	AFKChannelID                string `json:"afk_channel_id"`
-	AFKTimeout                  int64  `json:"afk_timeout"`
-	VerificationLevel           int64  `json:"verification_level"`
-	DefaultMessageNotifications int64  `json:"default_message_notifications"`
-	ExplicitContentFilter       int64  `json:"explicit_content_filter"`
-	PreferredLocale             string `json:"preferred_locale"`
-	PremiumTier                 int64  `json:"premium_tier"`
-	PremiumSubscriptionCount    int64  `json:"premium_subscription_count"`
-	SystemChannelID             string `json:"system_channel_id"`
-	RulesChannelID              string `json:"rules_channel_id"`
-	PublicUpdatesChannelID      string `json:"public_updates_channel_id"`
-	PremiumProgressBarEnabled   bool   `json:"premium_progress_bar_enabled"`
+	ID                          string   `json:"id"`
+	Name                        string   `json:"name"`
+	Description                 string   `json:"description"`
+	OwnerID                     string   `json:"owner_id"`
+	Icon                        string   `json:"icon"`
+	Splash                      string   `json:"splash"`
+	Banner                      string   `json:"banner"`
+	AFKChannelID                string   `json:"afk_channel_id"`
+	AFKTimeout                  int64    `json:"afk_timeout"`
+	VerificationLevel           int64    `json:"verification_level"`
+	DefaultMessageNotifications int64    `json:"default_message_notifications"`
+	ExplicitContentFilter       int64    `json:"explicit_content_filter"`
+	PreferredLocale             string   `json:"preferred_locale"`
+	PremiumTier                 int64    `json:"premium_tier"`
+	PremiumSubscriptionCount    int64    `json:"premium_subscription_count"`
+	SystemChannelID             string   `json:"system_channel_id"`
+	RulesChannelID              string   `json:"rules_channel_id"`
+	PublicUpdatesChannelID      string   `json:"public_updates_channel_id"`
+	PremiumProgressBarEnabled   bool     `json:"premium_progress_bar_enabled"`
+	Features                    []string `json:"features"`
 }
 
 // GuildSettingsBody is the PATCH /guilds/{id} payload. Pointer fields are only
 // sent when set, so the modify endpoint receives just the intended changes.
 type GuildSettingsBody struct {
-	Name                        *string `json:"name,omitempty"`
-	Description                 *string `json:"description,omitempty"`
-	VerificationLevel           *int64  `json:"verification_level,omitempty"`
-	DefaultMessageNotifications *int64  `json:"default_message_notifications,omitempty"`
-	ExplicitContentFilter       *int64  `json:"explicit_content_filter,omitempty"`
-	AFKChannelID                *string `json:"afk_channel_id,omitempty"`
-	AFKTimeout                  *int64  `json:"afk_timeout,omitempty"`
-	SystemChannelID             *string `json:"system_channel_id,omitempty"`
-	RulesChannelID              *string `json:"rules_channel_id,omitempty"`
-	PublicUpdatesChannelID      *string `json:"public_updates_channel_id,omitempty"`
-	PreferredLocale             *string `json:"preferred_locale,omitempty"`
-	PremiumProgressBarEnabled   *bool   `json:"premium_progress_bar_enabled,omitempty"`
+	Name                        *string   `json:"name,omitempty"`
+	Description                 *string   `json:"description,omitempty"`
+	VerificationLevel           *int64    `json:"verification_level,omitempty"`
+	DefaultMessageNotifications *int64    `json:"default_message_notifications,omitempty"`
+	ExplicitContentFilter       *int64    `json:"explicit_content_filter,omitempty"`
+	AFKChannelID                *string   `json:"afk_channel_id,omitempty"`
+	AFKTimeout                  *int64    `json:"afk_timeout,omitempty"`
+	SystemChannelID             *string   `json:"system_channel_id,omitempty"`
+	RulesChannelID              *string   `json:"rules_channel_id,omitempty"`
+	PublicUpdatesChannelID      *string   `json:"public_updates_channel_id,omitempty"`
+	PreferredLocale             *string   `json:"preferred_locale,omitempty"`
+	PremiumProgressBarEnabled   *bool     `json:"premium_progress_bar_enabled,omitempty"`
+	Features                    *[]string `json:"features,omitempty"`
 }
 
 // GuildPreview mirrors the Discord guild preview object (available for

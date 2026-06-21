@@ -50,7 +50,11 @@ type guildSettingsModel struct {
 	PublicUpdatesChannelID      types.String `tfsdk:"public_updates_channel_id"`
 	PreferredLocale             types.String `tfsdk:"preferred_locale"`
 	PremiumProgressBarEnabled   types.Bool   `tfsdk:"premium_progress_bar_enabled"`
+	Community                   types.Bool   `tfsdk:"community"`
 }
+
+// featureCommunity is the guild feature flag toggled by the community attribute.
+const featureCommunity = "COMMUNITY"
 
 func (r *guildSettingsResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_guild_settings"
@@ -88,6 +92,12 @@ func (r *guildSettingsResource) Schema(_ context.Context, _ resource.SchemaReque
 			"public_updates_channel_id":     optComputedSnowflake("Snowflake ID of the public updates channel (community guilds)."),
 			"preferred_locale":              optComputedStr("Preferred locale of a community guild."),
 			"premium_progress_bar_enabled":  schema.BoolAttribute{Optional: true, Computed: true, MarkdownDescription: "Whether the boost progress bar is enabled."},
+			"community": schema.BoolAttribute{
+				Optional: true,
+				Computed: true,
+				MarkdownDescription: "Whether the guild's Community feature is enabled. Toggling this includes or excludes `COMMUNITY` in the guild's `features` while preserving all other features. " +
+					"Enabling Community also requires `rules_channel_id` and `public_updates_channel_id` to be set, `verification_level` of at least 1 (LOW), and `explicit_content_filter` of 2 (ALL_MEMBERS); set those in the same resource.",
+			},
 		},
 	}
 }
@@ -112,7 +122,15 @@ func (r *guildSettingsResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
-	g, err := ModifyGuild(ctx, r.client, plan.GuildID.ValueString(), r.body(plan), "")
+	body := r.body(plan)
+	features, err := r.communityFeatures(ctx, plan)
+	if err != nil {
+		resp.Diagnostics.Append(diagutil.APIError("reading Discord guild features", plan.GuildID.ValueString(), err))
+		return
+	}
+	body.Features = features
+
+	g, err := ModifyGuild(ctx, r.client, plan.GuildID.ValueString(), body, "")
 	if err != nil {
 		resp.Diagnostics.Append(diagutil.APIError("applying Discord guild settings", plan.GuildID.ValueString(), err))
 		return
@@ -148,7 +166,15 @@ func (r *guildSettingsResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
-	g, err := ModifyGuild(ctx, r.client, plan.GuildID.ValueString(), r.body(plan), "")
+	body := r.body(plan)
+	features, err := r.communityFeatures(ctx, plan)
+	if err != nil {
+		resp.Diagnostics.Append(diagutil.APIError("reading Discord guild features", plan.GuildID.ValueString(), err))
+		return
+	}
+	body.Features = features
+
+	g, err := ModifyGuild(ctx, r.client, plan.GuildID.ValueString(), body, "")
 	if err != nil {
 		resp.Diagnostics.Append(diagutil.APIError("updating Discord guild settings", plan.GuildID.ValueString(), err))
 		return
@@ -185,6 +211,56 @@ func (r *guildSettingsResource) body(m guildSettingsModel) GuildSettingsBody {
 	}
 }
 
+// communityFeatures resolves the features array to send in the PATCH so that the
+// COMMUNITY flag matches the configured community value, preserving every other
+// feature. It returns nil (omitting features from the request) when community is
+// unset or already in the desired state, avoiding a needless features write.
+func (r *guildSettingsResource) communityFeatures(ctx context.Context, plan guildSettingsModel) (*[]string, error) {
+	if plan.Community.IsNull() || plan.Community.IsUnknown() {
+		return nil, nil
+	}
+	cur, err := GetGuild(ctx, r.client, plan.GuildID.ValueString())
+	if err != nil {
+		return nil, err
+	}
+	want := plan.Community.ValueBool()
+	if containsFeature(cur.Features, featureCommunity) == want {
+		return nil, nil
+	}
+	features := setFeature(cur.Features, featureCommunity, want)
+	return &features, nil
+}
+
+// setFeature returns a copy of features with name added (enable) or removed
+// (disable), preserving the order and content of all other features.
+func setFeature(features []string, name string, enable bool) []string {
+	out := make([]string, 0, len(features)+1)
+	found := false
+	for _, f := range features {
+		if f == name {
+			found = true
+			if !enable {
+				continue
+			}
+		}
+		out = append(out, f)
+	}
+	if enable && !found {
+		out = append(out, name)
+	}
+	return out
+}
+
+// containsFeature reports whether features includes name.
+func containsFeature(features []string, name string) bool {
+	for _, f := range features {
+		if f == name {
+			return true
+		}
+	}
+	return false
+}
+
 func (r *guildSettingsResource) apply(m *guildSettingsModel, g *Guild) {
 	m.GuildID = types.StringValue(g.ID)
 	m.Name = types.StringValue(g.Name)
@@ -194,6 +270,7 @@ func (r *guildSettingsResource) apply(m *guildSettingsModel, g *Guild) {
 	m.AFKTimeout = types.Int64Value(g.AFKTimeout)
 	m.PreferredLocale = types.StringValue(g.PreferredLocale)
 	m.PremiumProgressBarEnabled = types.BoolValue(g.PremiumProgressBarEnabled)
+	m.Community = types.BoolValue(containsFeature(g.Features, featureCommunity))
 
 	// Optional (non-computed) attributes: keep null when Discord reports empty,
 	// so an unset config value does not show perpetual drift.

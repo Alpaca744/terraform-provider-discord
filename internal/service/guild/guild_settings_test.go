@@ -52,3 +52,35 @@ func TestGuildSettingsApplyNullsEmpty(t *testing.T) {
 		t.Errorf("name = %q", m.Name.ValueString())
 	}
 }
+
+func TestGuildSettingsApplyCommunity(t *testing.T) {
+	r := &guildSettingsResource{}
+	var on guildSettingsModel
+	r.apply(&on, &Guild{ID: "1", Name: "G", Features: []string{"NEWS", "COMMUNITY"}})
+	if !on.Community.ValueBool() {
+		t.Error("expected community true when COMMUNITY present")
+	}
+	var off guildSettingsModel
+	r.apply(&off, &Guild{ID: "1", Name: "G", Features: []string{"NEWS"}})
+	if off.Community.ValueBool() {
+		t.Error("expected community false when COMMUNITY absent")
+	}
+}
+
+func TestSetFeature(t *testing.T) {
+	// Enabling preserves existing features and appends when missing.
+	got := setFeature([]string{"NEWS", "VERIFIED"}, featureCommunity, true)
+	if len(got) != 3 || got[2] != featureCommunity {
+		t.Errorf("enable append = %v", got)
+	}
+	// Enabling when already present is a no-op on membership and order.
+	got = setFeature([]string{"COMMUNITY", "NEWS"}, featureCommunity, true)
+	if len(got) != 2 || got[0] != "COMMUNITY" || got[1] != "NEWS" {
+		t.Errorf("enable existing = %v", got)
+	}
+	// Disabling removes only the named feature, preserving the rest.
+	got = setFeature([]string{"NEWS", "COMMUNITY", "VERIFIED"}, featureCommunity, false)
+	if len(got) != 2 || containsFeature(got, featureCommunity) {
+		t.Errorf("disable = %v", got)
+	}
+}
